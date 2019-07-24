@@ -1,6 +1,7 @@
 package source
 
 import org.apache.flink.api.scala.{DataSet, ExecutionEnvironment, _}
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.types.StringValue
 
 /**
@@ -10,6 +11,7 @@ import org.apache.flink.types.StringValue
 object SourceTest {
   def main(args: Array[String]): Unit = {
     val env = ExecutionEnvironment.getExecutionEnvironment
+    val streamEvn = StreamExecutionEnvironment.getExecutionEnvironment
 
     /** 第一种方式： 基于集合
       *
@@ -25,10 +27,11 @@ object SourceTest {
       *
       * */
 
-    val datasource1: DataSet[String] = env.fromElements("a b","c d")
-    val datasource2: DataSet[Int] = env.fromCollection(Seq(1,2,3,4,5))
-    val datasource3: DataSet[Int] = env.fromCollection(List(1,2,3,45,5))
-    val datasource4: DataSet[(String, Int)] = env.fromCollection(Map("a" -> 1,"b" ->2))
+    val datasource1: DataSet[String] = env.fromElements("a b", "c d")
+    val datasource2: DataSet[Int] = env.fromCollection(Seq(1, 2, 3, 4, 5))
+    val datasource3: DataSet[Int] = env.fromCollection(List(1, 2, 3, 45, 5))
+    val datasource4: DataSet[(String, Int)] = env.fromCollection(Map("a" -> 1, "b" -> 2))
+    val datasource8: DataSet[Long] = env.generateSequence(1, 100000)
 
     /** 第二种方式： 基于文件的
       *
@@ -49,23 +52,23 @@ object SourceTest {
       * */
 
 
-      /**
-        * 通用方法
-        * readFile(inputFormat, path)/ FileInputFormat- 接受文件输入格式。
-        *
-        * createInput(inputFormat)/ InputFormat- 接受通用输入格式。
-        *
-        * */
+    /**
+      * 通用方法
+      * readFile(inputFormat, path)/ FileInputFormat- 接受文件输入格式。
+      *
+      * createInput(inputFormat)/ InputFormat- 接受通用输入格式。
+      *
+      **/
 
-    val localDataPath:String = "c:/filnktest/input"
+    val localDataPath: String = "c:/filnktest/input"
     val hdfsDataPath: String = "hdfs://128.196.235.130/filnktest/input"
-    val dataSource5: DataSet[String] = env.readTextFile(localDataPath,"UTF-8")
+    val dataSource5: DataSet[String] = env.readTextFile(localDataPath, "UTF-8")
     val dataSource6: DataSet[Int] = env.readFileOfPrimitives[Int](localDataPath)
     val datasource7: DataSet[StringValue] = env.readTextFileWithValue(localDataPath)
 
     /** TSV与CSV的区别：
-      *  TSV为用制表符tab分隔的文本文件；
-      *  CSV为用逗号,分隔的文本文件。
+      * TSV为用制表符tab分隔的文本文件；
+      * CSV为用逗号,分隔的文本文件。
       * */
     val datasouurce_csv: DataSet[Student] = env.readCsvFile[Student](hdfsDataPath, //文件输入路径
       lineDelimiter = "\n", //文本行分隔符
@@ -77,10 +80,19 @@ object SourceTest {
       includedFields = Array[Int](0, 1, 2, 3, 4), //例：一行文本内容共有5列（0,1,2,3,4）代表文本的位置标识，需要哪一列就取那一列的下标
       pojoFields = Array[String]("id", "name", "sex", "age", "department") //获取的字段名，要与上面获取的文件内容一一对应
     )
-    datasouurce_csv
+    datasouurce_csv.print()
+
+   /** 第三种方式   从网络端口 */
+
+    streamEvn.socketTextStream("hadoop01",7658,'\n',3)
+
+    /** 第四种方式  自定义
+      *
+      * 自己编写一个类去继承 RichSourceFunction
+      * */
 
   }
 }
 
 
-case class Student(id:Int,name:String,sex:String,age:Int,department:String)
+case class Student(id: Int, name: String, sex: String, age: Int, department: String)
