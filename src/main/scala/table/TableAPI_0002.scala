@@ -1,18 +1,20 @@
 package table
 
+import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.scala._
 import org.apache.flink.core.fs.FileSystem.WriteMode
 import org.apache.flink.table.api._
 import org.apache.flink.table.api.scala._
+import org.apache.flink.table.sources.CsvTableSource
 import source.Student
 
 /**
   * @author LUJUHUI
   * @date 2019/7/25 15:02
   *
-  *  flink的table api 有两种操作方式:
+  *       flink的table api 有两种操作方式:
   *
-  *   1 DSL  表直接操作
+  *       1 DSL  表直接操作
   *
   *    table.groupBy(".....").select(".....,......").orderBy("......")
   *
@@ -23,9 +25,14 @@ import source.Student
   *       import org.apache.flink.table.api._
   *       import org.apache.flink.table.api.scala._
   *
-  *   2 SQL风格
+  *       2 SQL风格
   *
   *       val table:Table = tableEnv.sqlQuery("sql语句")
+  *
+  *       关于如何创建表对象有三种方式：
+  *       1 fromDataSet
+  *       2 registerDataSet
+  *       3 registerTableSource
   *
   */
 object TableAPI_0002 {
@@ -51,25 +58,38 @@ object TableAPI_0002 {
 
     // 另一种写法
     val otherAllTable: Table = allDataSet.groupBy("department")
-      .select('department,'age.count)
+      .select('department, 'age.count)
+
+    //registerTableSource的方式：
+
+    val studentCSVSource: CsvTableSource = new CsvTableSource(hdfsDataPath,
+      Array[String]("id", "name", "sex", "age", "department"),
+      Array[TypeInformation[_]](Types.INT, Types.STRING, Types.STRING, Types.INT, Types.STRING),
+      fieldDelim = ",",
+      ignoreFirstLine = false)
+    tableEnv.registerTableSource("studentTable1", studentCSVSource)
+    val resultTable1: Table = tableEnv.scan("studentTable1")
+    val lastResultTable1 = tableEnv.toDataSet[Student](resultTable1)
+    lastResultTable1.print()  //全表打印对象
+    println("------------------------------------")
 
 
     /**
-      *    val orders: Table = tEnv.scan("Orders") // schema (a, b, c, rowtime)
-      *    val result: Table = orders
-      *                      .filter('a.isNotNull && 'b.isNotNull && 'c.isNotNull)
-      *                      .select('a.lowerCase() as 'a, 'b, 'rowtime)
-      *                      .window(Tumble over 1.hour on 'rowtime as 'hourlyWindow)
-      *                      .groupBy('hourlyWindow, 'a)
-      *                      .select('a, 'hourlyWindow.end as 'hour, 'b.avg as 'avgBillingAmount)
+      * val orders: Table = tEnv.scan("Orders") // schema (a, b, c, rowtime)
+      * val result: Table = orders
+      * .filter('a.isNotNull && 'b.isNotNull && 'c.isNotNull)
+      * .select('a.lowerCase() as 'a, 'b, 'rowtime)
+      * .window(Tumble over 1.hour on 'rowtime as 'hourlyWindow)
+      * .groupBy('hourlyWindow, 'a)
+      * .select('a, 'hourlyWindow.end as 'hour, 'b.avg as 'avgBillingAmount)
       *
-      * */
+      **/
 
     //4 再将表转换为数据，打印结果
     val lastResultData = tableEnv.toDataSet[(String, Long)](allTable)
     lastResultData.print()
 
-    val hdfsDataOutputPath="hdfs://hadoop01:9000/user/flink/testData/output"
+    val hdfsDataOutputPath = "hdfs://hadoop01:9000/user/flink/testData/output"
     lastResultData.writeAsCsv(hdfsDataOutputPath,
       rowDelimiter = "\n",
       fieldDelimiter = "--",
