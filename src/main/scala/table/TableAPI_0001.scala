@@ -14,32 +14,37 @@ object TableAPI_0001 {
     val datasetEnv = ExecutionEnvironment.getExecutionEnvironment
     val tableEnv: BatchTableEnvironment = TableEnvironment.getTableEnvironment(datasetEnv)
 
-    val hdfsDataPath="hdfs://hadoop01:9000/user/flink/testData/student.csv"
+    val hdfsDataPath = "hdfs://hadoop01:9000/user/flink/testData/student.csv"
     val dataset1: DataSet[Student] = datasetEnv.readCsvFile[Student](hdfsDataPath,
-      includedFields = Array[Int](0,1,2,3,4),
-      pojoFields = Array[String]("id","name","sex","age","department"))
+      includedFields = Array[Int](0, 1, 2, 3, 4),
+      pojoFields = Array[String]("id", "name", "sex", "age", "department"))
 
     //将dataset1转换成studentTable表
-    tableEnv.registerDataSet("studentTable",dataset1)
+    tableEnv.registerDataSet("studentTable", dataset1)
 
-    /** 所有表数据*/
+    /** 所有表数据 */
     val allDataTable: Table = tableEnv.scan("studentTable")
     allDataTable.printSchema()
 
-    val resultTable: Table = tableEnv.sqlQuery("select id,name,sex,age from studentTable where age >=20 order by age")
+    val resultTable: Table = tableEnv.sqlQuery(
+      """
+        |select
+        |id,name,sex,age
+        |from
+        |studentTable
+        |where age >=20
+        |order by age
+      """.stripMargin    //stripMargin 从行中去掉由空格或控制字符组成的前导前缀，后面跟着' | '
+    )
     resultTable.printSchema()
 
     //将resultTable表转换为dataset
-    val lastResultDataset: DataSet[(Int, String, String, Int)] = tableEnv.toDataSet[(Int,String,String,Int)](resultTable)
+    val lastResultDataset: DataSet[(Int, String, String, Int)] = tableEnv
+      .toDataSet[(Int, String, String, Int)](resultTable)
+
     lastResultDataset.print()
 
     //datasetEnv.execute("studentTest")
-
-
-
-
-
-
 
   }
 
